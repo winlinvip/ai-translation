@@ -32,7 +32,7 @@ if args.proxy is not None:
 elif os.environ.get("OPENAI_PROXY") is not None:
     openai.api_base = "http://" + os.environ.get("OPENAI_PROXY") + "/v1/"
 else:
-    raise Exception("OPENAI_PROXY is not set")
+    print("Warning: OPENAI_PROXY is not set")
 
 def get_sorted_ts_files(input_name, live_folder):
     ts_files = []
