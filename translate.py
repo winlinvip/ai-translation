@@ -143,6 +143,7 @@ def generate_merge_asr(out_mergeasr, out_finalasr, previous_out_asr, out_asr, ou
                     with open(out_finalasr, 'w') as f:
                         f.write(asr_text)
 
+# Translate ASR to Chinese.
 def translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_trans_cn):
     for i in range(3):
         try:
@@ -176,6 +177,41 @@ def translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_t
             if i == 3:
                 raise e
 
+# Translate English to Chinese.
+def translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous_out_trans_cn):
+    for i in range(3):
+        try:
+            if not os.path.exists(out_trans_cn) and os.path.exists(out_trans_en):
+                messages = []
+                if previous_out_trans_en is not None and os.path.exists(previous_out_trans_en):
+                    with open(previous_out_trans_en, 'r') as f:
+                        previous_text = f.read()
+                    messages.append({"role": "user", "content": f"{PRMOPT_CN}\n'{previous_text}'"})
+                if previous_out_trans_cn is not None and os.path.exists(previous_out_trans_cn):
+                    with open(previous_out_trans_cn, 'r') as f:
+                        previous_text = f.read()
+                    messages.append({"role": "assistant", "content": f"{previous_text}"})
+                with open(out_trans_en, 'r') as f:
+                    src_text = f.read()
+                if src_text.strip() == '':
+                    print(f"Warning: English {out_trans_en} is empty, ignore")
+                    return
+                messages.append({"role": "user", "content": f"{PRMOPT_CN}\n'{src_text}'"})
+                completion = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=messages,
+                )
+                trans_text = completion.choices[0].message.content
+                print(f"Translate {src_text} to {trans_text}")
+                with open(out_trans_cn, 'w') as f:
+                    f.write(trans_text)
+            break
+        except Exception as e:
+            print(f"Translate to Chinese failed: {e}")
+            if i == 3:
+                raise e
+
+# Translate ASR to English.
 def translate_to_en(out_trans_en, out_finalasr, previous_out_asr, previous_out_trans_en):
     for i in range(3):
         try:
@@ -245,12 +281,13 @@ def loop(ignoreFiles):
             out_mergeasr = os.path.join(OUTPUT, f"{in_basename}.asr.m.txt")
             out_finalasr = os.path.join(OUTPUT, f"{in_basename}.asr.final.txt")
             generate_merge_asr(out_mergeasr, out_finalasr, previous_out_asr, out_asr, out_mergepath)
-            # Translate the final text to Chinese
-            out_trans_cn = os.path.join(OUTPUT, f"{in_basename}.trans.cn.txt")
-            translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_trans_cn)
             # Rephrase the final text to English
             out_trans_en = os.path.join(OUTPUT, f"{in_basename}.trans.en.txt")
             translate_to_en(out_trans_en, out_finalasr, previous_out_asr, previous_out_trans_en)
+            # Translate the final text to Chinese
+            out_trans_cn = os.path.join(OUTPUT, f"{in_basename}.trans.cn.txt")
+            #translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_trans_cn)
+            translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous_out_trans_cn)
             # Move the input sourc file to OUTPUT.
             out_infile = os.path.join(OUTPUT, f"{in_basename}.ts")
             move_ts_to_output(in_filepath, out_infile)
