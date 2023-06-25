@@ -3,6 +3,8 @@ import os, re, subprocess, openai, time, argparse
 parser = argparse.ArgumentParser(description="Translation")
 parser.add_argument("--stream", type=str, required=True, help="Input stream name, for example, livestream")
 parser.add_argument("--output", type=str, required=True, help="Output stream name, for example, livestream")
+parser.add_argument("--proxy", type=str, required=False, help="OpenAI API proxy, for example, x.y.z")
+parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for example, xxxyyyzzz")
 
 args = parser.parse_args()
 
@@ -17,8 +19,20 @@ print(f"args input={INPUT}, output={OUTPUT}, models={MODELS}")
 PROMPT_EN="Correct typo while maintain the original structure: "
 PROMPT_EN_POSTFIX="Make sure to directly output the result without details."
 PRMOPT_CN="Translate to Chinese: "
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-openai.api_base = "http://" + os.environ.get("OPENAI_PROXY") + "/v1/"
+
+if args.key is not None:
+    openai.api_key = args.key
+elif os.environ.get("OPENAI_API_KEY") is not None:
+    openai.api_key = os.environ.get("OPENAI_API_KEY")
+else:
+    raise Exception("OPENAI_API_KEY is not set")
+
+if args.proxy is not None:
+    openai.api_base = "http://" + args.proxy + "/v1/"
+elif os.environ.get("OPENAI_PROXY") is not None:
+    openai.api_base = "http://" + os.environ.get("OPENAI_PROXY") + "/v1/"
+else:
+    raise Exception("OPENAI_PROXY is not set")
 
 def get_sorted_ts_files(input_name, live_folder):
     ts_files = []
