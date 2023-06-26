@@ -1,6 +1,6 @@
 # ai-translation
 
-AI translation for English study based on SRS, K2, FFmpeg, OBS, and GPT.
+AI translation for English study based on SRS, K2, Whisper, FFmpeg, OBS, and GPT.
 
 ## Usage
 
@@ -63,6 +63,19 @@ Or by OBS:
 * Server: `rtmp://localhost/live`
 * Stream Key: `livestream`
 
+## Whisper
+
+Install whisper:
+
+```bash
+cd ~/git
+git clone -b translation https://github.com/ossrs/whisper.git
+cd ~/git/whisper
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt 
+```
+
 ### K2
 
 Install lfs:
@@ -108,6 +121,7 @@ Link tools:
 ```bash
 cd ~/git/ai-translation
 rm -f k2 && ln -sf ~/git/sherpa-ncnn/build/bin k2
+rm -f whisper && ln -sf ~/git/whisper whisper
 rm -f live && ln -sf ~/git/srs/trunk/objs/nginx/html/live live
 rm -f models && ln -sf ~/git/sherpa-ncnn-streaming-zipformer-en-2023-02-13 models
 ```

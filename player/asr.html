@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Translation</title>
+    <meta charset="utf-8">
+    <!-- https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css -->
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+    <!-- https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js -->
+    <script src="./js/bootstrap.bundle.min.js"></script>
+    <!-- https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js -->
+    <script src="./js/jquery.min.js"></script>
+    <!-- https://github.com/xqq/mpegts.js/releases/tag/v1.7.3 -->
+    <script type="text/javascript" src="js/mpegts-1.7.3.min.js"></script>
+</head>
+<body>
+    <div class="container-fluid">
+        <video id="video_player" controls autoplay style="height:576px"></video>
+        <div id="div-segments" style="height: 700px; overflow: scroll">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>ASR</th>
+                        <th>English</th>
+                        <th>Chinese</th>
+                    </tr>
+                </thead>
+                <tbody id="segments">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script type="text/javascript">
+        var tsPlayer = null;
+        var db = {
+            data: [],
+            get: function (key) {
+                for (let i = 0; i < db.data.length; i++) {
+                    if (db.data[i].name === key) {
+                        return db.data[i];
+                    }
+                }
+                return null;
+            },
+        };
+
+        const qu = new URL(window.location.href);
+        const qIn = qu.searchParams.get("in");
+        if (!qIn) throw new Error("in is required");
+
+        $(function(){
+            const autoRefresh = async () => {
+                while (true) {
+                    await updateSegments();
+                    await new Promise(resolve => setTimeout(resolve, 3 * 1000));
+                }
+            };
+
+            const updateSegments = async () => {
+                const data = await new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: `/api/segments?in=${qIn}`,
+                        dataType: "json",
+                        success: function(data) {
+                            resolve(data);
+                        },
+                        error: function(jqXHR) {
+                            reject(jqXHR);
+                        }
+                    });
+                });
+
+                for (let i = 0; i < data.length; i++) {
+                    const index = i;
+                    const segment = data[i];
+                    const exists = db.get(segment.name);
+
+                    const tr = exists ? exists.tr : $(`
+                        <tr id="tr-${index}">
+                            <td class="col-1"></td>
+                            <td class="col-3"></td>
+                            <td class="col-3"></td>
+                            <td class="col-3"></td>
+                        </tr>
+                    `);
+                    tr.find('td').eq(0).text(segment.name);
+                    tr.find('td').eq(1).text(segment.asr);
+                    tr.find('td').eq(2).text(filterContent(segment.en));
+                    tr.find('td').eq(3).text(filterContent(segment.cn));
+                    onRenderTR(tr, segment, exists);
+
+                    if (!exists) {
+                        db.data.push({name: segment.name, segment: segment, tr: tr});
+                        tr.click(() => {
+                            playSegment(tr, segment, index);
+                        });
+                        $('#segments').append(tr);
+                    }
+                }
+            };
+
+            const filterContent = (content) => {
+                //content = content && content.trim().replace(/^(["'])|(["'])$/g, '');
+                //content = content && content.indexOf(': "') > 0 ? content.split(': "')[1] : content;
+                //content = content && content.indexOf('…（') > 0 ? content.split('…（')[0] : content;
+                //content = content && content.indexOf('...（') > 0 ? content.split('...（')[0] : content;
+                return content;
+            };
+
+            const playSegment = async (tr, segment, index) => {
+                if (tsPlayer) {
+                    $('#video_player').off('timeupdate');
+                    tsPlayer.destroy();
+                    tsPlayer = null;
+                }
+
+                const url = `/api/ts?in=${qIn}&segment=${segment.name}`;
+                const video = document.getElementById('video_player');
+                tsPlayer = mpegts.createPlayer({type: 'mpegts', url: url, isLive: true, enableStashBuffer: false});
+                tsPlayer.attachMediaElement(video);
+                $('#video_player').on('timeupdate', (e) => {
+                    let end = null;
+                    try {
+                        end = tsPlayer && tsPlayer.buffered && tsPlayer.buffered.end(0);
+                    } catch (e) {
+                        return;
+                    }
+
+                    try {
+                        const next = index < db.data.length - 1 ? db.data[index + 1] : null;
+                        const nextTR = next ? $(`#tr-${index + 1}`) : null;
+
+                        const current = video && video.currentTime;
+                        if (end && current && end - current <= 0.3 && nextTR) {
+                            onSegmentEnd(video, tr, segment, index, current, end, next, nextTR);
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                });
+                tsPlayer.load();
+                tsPlayer.play();
+
+                tr.addClass('table-success');
+
+                var scrollableDiv = $('#div-segments');
+                scrollableDiv.animate({
+                    scrollTop: tr.offset().top - scrollableDiv.offset().top + scrollableDiv.scrollTop()
+                        - scrollableDiv.height() / 2 * 0.8
+                }, 1000);
+            };
+
+            const onRenderTR = (tr, segment, exists) => {
+            };
+            const onSegmentEnd = (video, tr, segment, index, current, end, next, nextTR) => {
+                console.log(`Switch ${segment.name} to next segment: ${next.name}, time: ${current}, end: ${end}`);
+                tr.removeClass('table-success');
+                nextTR.click();
+            };
+
+            window.addEventListener("load", function(){ autoRefresh(); });
+        });
+    </script>
+</body>

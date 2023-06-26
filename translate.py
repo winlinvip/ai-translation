@@ -5,6 +5,7 @@ parser.add_argument("--stream", type=str, required=True, help="Input stream name
 parser.add_argument("--output", type=str, required=True, help="Output stream name, for example, livestream")
 parser.add_argument("--proxy", type=str, required=False, help="OpenAI API proxy, for example, x.y.z")
 parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for example, xxxyyyzzz")
+parser.add_argument("--asr", type=str, default='whipser', help="ASR tool, for example, k2, whipser")
 
 args = parser.parse_args()
 
@@ -14,7 +15,8 @@ MODELS=f"./models/tokens.txt ./models/encoder_jit_trace-pnnx.ncnn.param " \
        f"./models/encoder_jit_trace-pnnx.ncnn.bin ./models/decoder_jit_trace-pnnx.ncnn.param " \
        f"./models/decoder_jit_trace-pnnx.ncnn.bin ./models/joiner_jit_trace-pnnx.ncnn.param " \
        f"./models/joiner_jit_trace-pnnx.ncnn.bin"
-print(f"args input={INPUT}, output={OUTPUT}, models={MODELS}")
+WHIPSER_MODEL="base"
+print(f"args input={INPUT}, output={OUTPUT}, asr={args.asr}, k2-models={MODELS}, whipser-model={WHIPSER_MODEL}")
 
 PROMPT_EN="Correct typo while maintain the original structure: "
 PROMPT_EN_POSTFIX="Make sure to directly output the result without details."
@@ -58,9 +60,10 @@ def execute_result(cli):
     clis = cli.split(' ')
     print(' '.join(clis))
     result = subprocess.run(clis, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = result.stdout.decode('utf-8'), result.stderr.decode('utf-8')
     if result.returncode != 0:
-        raise Exception(f"command failed: {cli}, code is {result.returncode}")
-    return [result.stdout.decode('utf-8'), result.stderr.decode('utf-8')]
+        raise Exception(f"command failed: {cli}, code is {result.returncode}, {stdout}, {stderr}")
+    return [stdout, stderr]
 
 def get_asr_result(text):
     for line in text.split('\n'):
@@ -84,8 +87,12 @@ def generate_asr(in_filepath, out_filepath, out_asr):
     if not os.path.exists(out_asr) and os.path.exists(out_filepath):
         print(f"generate ASR {out_filepath} to {out_asr}")
         execute_cli(f"mkdir -p {os.path.dirname(out_asr)}")
-        text = execute_result(f"./k2/sherpa-ncnn {MODELS} {out_filepath} 2>/dev/null")[0]
-        asr_text = get_asr_result(text)
+        if args.asr == 'k2':
+            text = execute_result(f"./k2/sherpa-ncnn {MODELS} {out_filepath}")[0]
+            asr_text = get_asr_result(text)
+        else:
+            abs_path = os.path.abspath(out_filepath)
+            asr_text = execute_result(f"bash ./whisper/tool.sh --input {abs_path} --model {WHIPSER_MODEL}")[0]
         if asr_text is None:
             return
         if asr_text.strip() == '':
@@ -119,8 +126,12 @@ def generate_merge_asr(out_mergeasr, out_finalasr, previous_out_asr, out_asr, ou
         else:
             print(f"generate ASR {out_mergepath} to {out_mergeasr}")
             execute_cli(f"mkdir -p {os.path.dirname(out_mergeasr)}")
-            text = execute_result(f"./k2/sherpa-ncnn {MODELS} {out_mergepath} 2>/dev/null")[0]
-            asr_text = get_asr_result(text)
+            if args.asr == 'k2':
+                text = execute_result(f"./k2/sherpa-ncnn {MODELS} {out_mergepath}")[0]
+                asr_text = get_asr_result(text)
+            else:
+                abs_path = os.path.abspath(out_mergepath)
+                asr_text = execute_result(f"bash ./whisper/tool.sh --input {abs_path} --model {WHIPSER_MODEL}")[0]
             if asr_text is not None:
                 if asr_text.strip() == '<unk>':
                     if os.path.exists(out_asr):
