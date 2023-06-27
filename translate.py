@@ -5,19 +5,13 @@ parser.add_argument("--stream", type=str, required=True, help="Input stream name
 parser.add_argument("--output", type=str, required=True, help="Output stream name, for example, livestream")
 parser.add_argument("--proxy", type=str, required=False, help="OpenAI API proxy, for example, x.y.z")
 parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for example, xxxyyyzzz")
-parser.add_argument("--asr", type=str, default='whipser', help="ASR tool: whisper, k2. Default: whipser")
 parser.add_argument("--trans", type=str, default='fairseq', help="Translation tool: fairseq, gpt. Default: fairseq")
 parser.add_argument("--cnsrc", type=str, default='asr', help="Source text for translation to Chinese: asr, en. Default: asr")
-parser.add_argument("--merge", type=str, default='direct', help="Whether merge two segment: direct, sibling. Default: direct")
 
 args = parser.parse_args()
 
 INPUT=rf"live/{args.stream}-.*\.ts$"
 OUTPUT=f"out/{args.output}"
-MODELS=f"./models/tokens.txt ./models/encoder_jit_trace-pnnx.ncnn.param " \
-       f"./models/encoder_jit_trace-pnnx.ncnn.bin ./models/decoder_jit_trace-pnnx.ncnn.param " \
-       f"./models/decoder_jit_trace-pnnx.ncnn.bin ./models/joiner_jit_trace-pnnx.ncnn.param " \
-       f"./models/joiner_jit_trace-pnnx.ncnn.bin"
 # available models: 'tiny', 'base', 'small', 'medium', 'large'
 # or english-only models: 'tiny.en', 'base.en', 'small.en', 'medium.en'
 # See https://github.com/ossrs/whisper#available-models-and-languages
@@ -26,11 +20,7 @@ WHIPSER_MODEL="small.en"
 FAIRSEQ_MODEL="facebook/nllb-200-distilled-600M"
 
 logs = []
-logs.append(f"asr={args.asr}, merge={args.merge}")
-if args.asr == 'k2':
-    logs.append(f"k2-models={MODELS}")
-else:
-    logs.append(f"whisper-model={WHIPSER_MODEL}")
+logs.append(f"whisper-model={WHIPSER_MODEL}")
 logs.append(f"translation={args.trans}")
 if args.trans == 'fairseq':
     logs.append(f"fairseq-model={FAIRSEQ_MODEL}")
@@ -107,12 +97,8 @@ def generate_asr(in_filepath, out_filepath, out_asr):
     if not os.path.exists(out_asr) and os.path.exists(out_filepath):
         print(f"generate ASR {out_filepath} to {out_asr}")
         execute_cli(f"mkdir -p {os.path.dirname(out_asr)}")
-        if args.asr == 'k2':
-            text = execute_result(f"./k2/sherpa-ncnn {MODELS} {out_filepath}")[0]
-            asr_text = get_asr_result(text)
-        else:
-            abs_path = os.path.abspath(out_filepath)
-            asr_text = execute_result(f"bash ./whisper/tool.sh --input {abs_path} --model {WHIPSER_MODEL}")[0]
+        abs_path = os.path.abspath(out_filepath)
+        asr_text = execute_result(f"bash ./whisper/tool.sh --input {abs_path} --model {WHIPSER_MODEL}")[0]
         if asr_text is None:
             return
         if asr_text.strip() == '':
@@ -121,58 +107,6 @@ def generate_asr(in_filepath, out_filepath, out_asr):
         print(f"Write ASR {out_asr}, text is {asr_text}")
         with open(out_asr, 'w') as f:
             f.write(asr_text)
-
-def merge_ts_then_convert_to_wav(out_mergepath, previous_in_filepath, in_filepath, out_filepath):
-    if not os.path.exists(out_mergepath):
-        if previous_in_filepath is None or args.merge == 'direct':
-            execute_cli(f"cp {out_filepath} {out_mergepath}")
-        else:
-            print(f"convert {previous_in_filepath} and {in_filepath} to {out_mergepath}")
-            execute_cli(f"mkdir -p {os.path.dirname(out_mergepath)}")
-            try:
-                with open('list.txt', 'w') as f:
-                    f.write(f"file '{previous_in_filepath}'\n")
-                    f.write(f"file '{in_filepath}'\n")
-                execute_cli(f"ffmpeg -f concat -i list.txt -vn -acodec pcm_s16le -ar 16000 -ac 1 -y {out_mergepath}")
-            finally:
-                if os.path.exists('list.txt'):
-                    os.remove('list.txt')
-
-def generate_merge_asr(out_mergeasr, out_finalasr, previous_out_asr, out_asr, out_mergepath):
-    if not os.path.exists(out_mergeasr) and os.path.exists(out_mergepath):
-        if previous_out_asr is None or args.merge == 'direct':
-            execute_cli(f"cp {out_asr} {out_mergeasr}")
-            execute_cli(f"cp {out_asr} {out_finalasr}")
-        else:
-            print(f"generate ASR {out_mergepath} to {out_mergeasr}")
-            execute_cli(f"mkdir -p {os.path.dirname(out_mergeasr)}")
-            if args.asr == 'k2':
-                text = execute_result(f"./k2/sherpa-ncnn {MODELS} {out_mergepath}")[0]
-                asr_text = get_asr_result(text)
-            else:
-                abs_path = os.path.abspath(out_mergepath)
-                asr_text = execute_result(f"bash ./whisper/tool.sh --input {abs_path} --model {WHIPSER_MODEL}")[0]
-            if asr_text is not None:
-                if asr_text.strip() == '<unk>':
-                    if os.path.exists(out_asr):
-                        print(f"Warning: ASR {out_mergepath} is <unk>, use directly ASR {out_asr}")
-                        execute_cli(f"cp {out_asr} {out_mergeasr}")
-                        execute_cli(f"cp {out_asr} {out_finalasr}")
-                    else:
-                        print(f"Warning: ASR both {out_mergepath} and {out_asr} are <unk>, ignore")
-                else:
-                    asr_text = asr_text.lower()
-                    with open(out_mergeasr, 'w') as f:
-                        f.write(asr_text)
-                    previous_asr_text = None
-                    if os.path.exists(previous_out_asr):
-                        with open(previous_out_asr, 'r') as f:
-                            previous_asr_text = f.read()
-                        if len(previous_asr_text) < len(asr_text):
-                            asr_text = asr_text[len(previous_asr_text):]
-                    print(f"Write ASR {out_mergeasr}, text is {asr_text}, previous is {previous_asr_text}")
-                    with open(out_finalasr, 'w') as f:
-                        f.write(asr_text)
 
 # Translate ASR to Chinese.
 def translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_trans_cn):
@@ -317,20 +251,13 @@ def loop(ignoreFiles):
             # Generate ASR
             out_asr = os.path.join(OUTPUT, f"{in_basename}.asr.txt")
             generate_asr(in_filepath, out_filepath, out_asr)
-            # Merge previous and current WAV
-            out_mergepath = os.path.join(OUTPUT, f"{in_basename}.m.wav")
-            merge_ts_then_convert_to_wav(out_mergepath, previous_in_filepath, in_filepath, out_filepath)
-            # For merged WAV, generate ASR
-            out_mergeasr = os.path.join(OUTPUT, f"{in_basename}.asr.m.txt")
-            out_finalasr = os.path.join(OUTPUT, f"{in_basename}.asr.final.txt")
-            generate_merge_asr(out_mergeasr, out_finalasr, previous_out_asr, out_asr, out_mergepath)
             # Rephrase the final text to English
             out_trans_en = os.path.join(OUTPUT, f"{in_basename}.trans.en.txt")
-            translate_to_en(out_trans_en, out_finalasr, previous_out_asr, previous_out_trans_en)
+            translate_to_en(out_trans_en, out_asr, previous_out_asr, previous_out_trans_en)
             # Translate the final text to Chinese
             out_trans_cn = os.path.join(OUTPUT, f"{in_basename}.trans.cn.txt")
             if args.cnsrc == 'asr':
-                translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_trans_cn)
+                translate_to_cn(out_trans_cn, out_asr, previous_out_asr, previous_out_trans_cn)
             else:
                 translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous_out_trans_cn)
             # Move the input sourc file to OUTPUT.

@@ -1,6 +1,6 @@
 # ai-translation
 
-AI translation for English study based on SRS, K2, Whisper, FFmpeg, OBS, Fairseq, and GPT.
+AI translation for English study based on SRS, Whisper, FFmpeg, OBS, Fairseq, and GPT.
 
 ## Usage
 
@@ -8,7 +8,7 @@ The following is the usage of the AI translation.
 
 * FFmpeg or OBS: Ingest audio stream.
 * SRS: Convert audio stream to HLS.
-* Whisper or K2: ASR to convert audio to text.
+* Whisper: ASR to convert audio to text.
 * Fairseq or GPT: Translate text to multiple languages.
 
 ## FFmpeg
@@ -89,35 +89,6 @@ source venv/bin/activate
 pip install -r requirements.txt 
 ```
 
-### K2
-
-Install lfs:
-
-```bash
-brew install git-lfs
-```
-
-Download models:
-
-```bash
-cd ~/git
-GIT_LFS_SKIP_SMUDGE=1 git clone \
-  https://huggingface.co/csukuangfj/sherpa-ncnn-streaming-zipformer-en-2023-02-13
-cd ~/git/sherpa-ncnn-streaming-zipformer-en-2023-02-13
-git lfs pull --include "*.bin"
-```
-
-Build K2:
-
-```bash
-cd ~/git
-git clone https://github.com/k2-fsa/sherpa-ncnn
-mkdir ~/git/sherpa-ncnn/build
-cd ~/git/sherpa-ncnn/build
-cmake ..
-make -j6
-```
-
 ### Fairseq
 
 Install fairseq:
@@ -146,11 +117,9 @@ Link tools:
 
 ```bash
 cd ~/git/ai-translation
-rm -f k2 && ln -sf ~/git/sherpa-ncnn/build/bin k2
 rm -f whisper && ln -sf ~/git/whisper whisper
 rm -f fairseq && ln -sf ~/git/fairseq fairseq
 rm -f live && ln -sf ~/git/srs/trunk/objs/nginx/html/live live
-rm -f models && ln -sf ~/git/sherpa-ncnn-streaming-zipformer-en-2023-02-13 models
 ```
 
 Install dependencies:
