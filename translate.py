@@ -8,6 +8,7 @@ parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for
 parser.add_argument("--asr", type=str, default='whipser', help="ASR tool: whisper, k2. Default: whipser")
 parser.add_argument("--trans", type=str, default='fairseq', help="Translation tool: fairseq, gpt. Default: fairseq")
 parser.add_argument("--cnsrc", type=str, default='asr', help="Source text for translation to Chinese: asr, en. Default: asr")
+parser.add_argument("--merge", type=str, default='direct', help="Whether merge two segment: direct, sibling. Default: direct")
 
 args = parser.parse_args()
 
@@ -20,12 +21,12 @@ MODELS=f"./models/tokens.txt ./models/encoder_jit_trace-pnnx.ncnn.param " \
 # available models: 'tiny', 'base', 'small', 'medium', 'large'
 # or english-only models: 'tiny.en', 'base.en', 'small.en', 'medium.en'
 # See https://github.com/ossrs/whisper#available-models-and-languages
-WHIPSER_MODEL="medium.en"
+WHIPSER_MODEL="small.en"
 # available models: 'facebook/nllb-200-distilled-600M', 'facebook/nllb-200-1.3B', 'facebook/nllb-200-distilled-1.3B', 'facebook/nllb-200-3.3B'
 FAIRSEQ_MODEL="facebook/nllb-200-distilled-600M"
 
 logs = []
-logs.append(f"asr={args.asr}")
+logs.append(f"asr={args.asr}, merge={args.merge}")
 if args.asr == 'k2':
     logs.append(f"k2-models={MODELS}")
 else:
@@ -123,7 +124,7 @@ def generate_asr(in_filepath, out_filepath, out_asr):
 
 def merge_ts_then_convert_to_wav(out_mergepath, previous_in_filepath, in_filepath, out_filepath):
     if not os.path.exists(out_mergepath):
-        if previous_in_filepath is None:
+        if previous_in_filepath is None or args.merge == 'direct':
             execute_cli(f"cp {out_filepath} {out_mergepath}")
         else:
             print(f"convert {previous_in_filepath} and {in_filepath} to {out_mergepath}")
@@ -139,7 +140,7 @@ def merge_ts_then_convert_to_wav(out_mergepath, previous_in_filepath, in_filepat
 
 def generate_merge_asr(out_mergeasr, out_finalasr, previous_out_asr, out_asr, out_mergepath):
     if not os.path.exists(out_mergeasr) and os.path.exists(out_mergepath):
-        if previous_out_asr is None:
+        if previous_out_asr is None or args.merge == 'direct':
             execute_cli(f"cp {out_asr} {out_mergeasr}")
             execute_cli(f"cp {out_asr} {out_finalasr}")
         else:
