@@ -92,7 +92,6 @@ Then link directories and tools:
 ```bash
 cd ~/git/ai-translation
 mkdir -p player/out && rm -f out && ln -sf player/out out
-rm -f whisper && ln -sf ~/git/whisper whisper
 rm -f fairseq && ln -sf ~/git/fairseq fairseq
 rm -f live && ln -sf ~/git/srs/trunk/objs/nginx/html/live live
 ```

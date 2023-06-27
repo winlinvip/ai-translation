@@ -1,4 +1,4 @@
-import os, re, subprocess, openai, time, argparse
+import os, re, subprocess, openai, time, argparse, whisper
 
 parser = argparse.ArgumentParser(description="Translation")
 parser.add_argument("--stream", type=str, required=True, help="Input stream name, for example, livestream")
@@ -45,6 +45,9 @@ if args.trans == 'gpt':
         openai.api_base = "http://" + os.environ.get("OPENAI_PROXY") + "/v1/"
     else:
         print("Warning: OPENAI_PROXY is not set")
+
+whisper_model = whisper.load_model(WHIPSER_MODEL)
+print(f"whisper model loaded: {WHIPSER_MODEL}")
 
 def get_sorted_ts_files(input_name, live_folder):
     ts_files = []
@@ -97,8 +100,8 @@ def generate_asr(in_filepath, out_filepath, out_asr):
     if not os.path.exists(out_asr) and os.path.exists(out_filepath):
         print(f"generate ASR {out_filepath} to {out_asr}")
         execute_cli(f"mkdir -p {os.path.dirname(out_asr)}")
-        abs_path = os.path.abspath(out_filepath)
-        asr_text = execute_result(f"bash ./whisper/tool.sh --input {abs_path} --model {WHIPSER_MODEL}")[0]
+        result = whisper_model.transcribe(out_filepath, fp16=False)
+        asr_text = result["text"]
         if asr_text is None:
             return
         if asr_text.strip() == '':
