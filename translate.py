@@ -5,8 +5,9 @@ parser.add_argument("--stream", type=str, required=True, help="Input stream name
 parser.add_argument("--output", type=str, required=True, help="Output stream name, for example, livestream")
 parser.add_argument("--proxy", type=str, required=False, help="OpenAI API proxy, for example, x.y.z")
 parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for example, xxxyyyzzz")
-parser.add_argument("--asr", type=str, default='whipser', help="ASR tool, for example, k2, whipser")
-parser.add_argument("--trans", type=str, default='fairseq', help="Translation tool, for example, gpt, fairseq")
+parser.add_argument("--asr", type=str, default='whipser', help="ASR tool: whisper, k2. Default: whipser")
+parser.add_argument("--trans", type=str, default='fairseq', help="Translation tool: fairseq, gpt. Default: fairseq")
+parser.add_argument("--cnsrc", type=str, default='asr', help="Source text for translation to Chinese: asr, en. Default: asr")
 
 args = parser.parse_args()
 
@@ -16,27 +17,43 @@ MODELS=f"./models/tokens.txt ./models/encoder_jit_trace-pnnx.ncnn.param " \
        f"./models/encoder_jit_trace-pnnx.ncnn.bin ./models/decoder_jit_trace-pnnx.ncnn.param " \
        f"./models/decoder_jit_trace-pnnx.ncnn.bin ./models/joiner_jit_trace-pnnx.ncnn.param " \
        f"./models/joiner_jit_trace-pnnx.ncnn.bin"
+# available models: 'tiny', 'base', 'small', 'medium', 'large'
+# or english-only models: 'tiny.en', 'base.en', 'small.en', 'medium.en'
 # See https://github.com/ossrs/whisper#available-models-and-languages
-WHIPSER_MODEL="base.en"
-print(f"args input={INPUT}, output={OUTPUT}, asr={args.asr}, k2-models={MODELS}, whipser-model={WHIPSER_MODEL}, translation={args.trans}")
+WHIPSER_MODEL="medium.en"
+# available models: 'facebook/nllb-200-distilled-600M', 'facebook/nllb-200-1.3B', 'facebook/nllb-200-distilled-1.3B', 'facebook/nllb-200-3.3B'
+FAIRSEQ_MODEL="facebook/nllb-200-distilled-600M"
+
+logs = []
+logs.append(f"asr={args.asr}")
+if args.asr == 'k2':
+    logs.append(f"k2-models={MODELS}")
+else:
+    logs.append(f"whisper-model={WHIPSER_MODEL}")
+logs.append(f"translation={args.trans}")
+if args.trans == 'fairseq':
+    logs.append(f"fairseq-model={FAIRSEQ_MODEL}")
+logs.append(f"cn-source={args.cnsrc}")
+print(f"args input={INPUT}, output={OUTPUT}, {', '.join(logs)}")
 
 PROMPT_EN="Correct typo while maintain the original structure: "
 PROMPT_EN_POSTFIX="Make sure to directly output the result without details."
 PRMOPT_CN="Translate to Chinese: "
 
-if args.key is not None:
-    openai.api_key = args.key
-elif os.environ.get("OPENAI_API_KEY") is not None:
-    openai.api_key = os.environ.get("OPENAI_API_KEY")
-else:
-    raise Exception("OPENAI_API_KEY is not set")
+if args.trans == 'gpt':
+    if args.key is not None:
+        openai.api_key = args.key
+    elif os.environ.get("OPENAI_API_KEY") is not None:
+        openai.api_key = os.environ.get("OPENAI_API_KEY")
+    else:
+        raise Exception("OPENAI_API_KEY is not set")
 
-if args.proxy is not None:
-    openai.api_base = "http://" + args.proxy + "/v1/"
-elif os.environ.get("OPENAI_PROXY") is not None:
-    openai.api_base = "http://" + os.environ.get("OPENAI_PROXY") + "/v1/"
-else:
-    print("Warning: OPENAI_PROXY is not set")
+    if args.proxy is not None:
+        openai.api_base = "http://" + args.proxy + "/v1/"
+    elif os.environ.get("OPENAI_PROXY") is not None:
+        openai.api_base = "http://" + os.environ.get("OPENAI_PROXY") + "/v1/"
+    else:
+        print("Warning: OPENAI_PROXY is not set")
 
 def get_sorted_ts_files(input_name, live_folder):
     ts_files = []
@@ -168,7 +185,7 @@ def translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_t
                     return
                 if args.trans == 'fairseq':
                     abs_path = os.path.abspath(out_finalasr)
-                    trans_text = execute_result(f"bash ./fairseq/tool.sh --source eng_Latn --target zho_Hans --text {abs_path}")[0]
+                    trans_text = execute_result(f"bash ./fairseq/tool.sh --model={FAIRSEQ_MODEL} --source eng_Latn --target zho_Hans --text {abs_path}")[0]
                 else:
                     messages = []
                     if previous_out_asr is not None and os.path.exists(previous_out_asr):
@@ -206,7 +223,7 @@ def translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous
                     return
                 if args.trans == 'fairseq':
                     abs_path = os.path.abspath(out_trans_en)
-                    trans_text = execute_result(f"bash ./fairseq/tool.sh --source eng_Latn --target zho_Hans --text {abs_path}")[0]
+                    trans_text = execute_result(f"bash ./fairseq/tool.sh --model={FAIRSEQ_MODEL} --source eng_Latn --target zho_Hans --text {abs_path}")[0]
                 else:
                     messages = []
                     if previous_out_trans_en is not None and os.path.exists(previous_out_trans_en):
@@ -244,7 +261,7 @@ def translate_to_en(out_trans_en, out_finalasr, previous_out_asr, previous_out_t
                     return
                 if args.trans == 'fairseq':
                     abs_path = os.path.abspath(out_finalasr)
-                    trans_text = execute_result(f"bash ./fairseq/tool.sh --source eng_Latn --target eng_Latn --text {abs_path}")[0]
+                    trans_text = execute_result(f"bash ./fairseq/tool.sh --model={FAIRSEQ_MODEL} --source eng_Latn --target eng_Latn --text {abs_path}")[0]
                 else:
                     messages = []
                     if previous_out_asr is not None and os.path.exists(previous_out_asr):
@@ -311,8 +328,10 @@ def loop(ignoreFiles):
             translate_to_en(out_trans_en, out_finalasr, previous_out_asr, previous_out_trans_en)
             # Translate the final text to Chinese
             out_trans_cn = os.path.join(OUTPUT, f"{in_basename}.trans.cn.txt")
-            #translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_trans_cn)
-            translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous_out_trans_cn)
+            if args.cnsrc == 'asr':
+                translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_trans_cn)
+            else:
+                translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous_out_trans_cn)
             # Move the input sourc file to OUTPUT.
             out_infile = os.path.join(OUTPUT, f"{in_basename}.ts")
             move_ts_to_output(in_filepath, out_infile)
