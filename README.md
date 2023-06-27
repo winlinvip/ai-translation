@@ -192,4 +192,31 @@ Whisper open-source project, with an added tool.py to simplify its usage.
 [Fairseq](https://github.com/ossrs/fairseq) is a translation tool derived from the meta 
 fairseq open-source project, with an added tool.py to simplify its usage.
 
+## (Optional) Annex B: Other Languages
+
+It is capable of translating from one language to another without any limitations.
+
+For example, translate from English to German:
+
+```bash
+python translate.py --stream livestream --output livestream --source eng_Latn --target deu_Latn
+```
+
+The following languages are some examples:
+
+* eng_Latn: English written in Latin script
+* zho_Hans: Chinese written in Simplified Han script
+* kor_Hang: Korean written in Hangul script
+* fra_Latn: French written in Latin script
+* spa_Latn: Spanish written in Latin script
+* ita_Latn: Italian written in Latin script
+* deu_Latn: German written in Latin script
+* jpn_Jpan: Japanese written in Japanese script, which includes Kanji, Hiragana, and Katakana
+* pol_Latn: Polish written in Latin script
+
+Other languages should also be supported, but we have not tested them, please see
+[Whipser: Available models and languages](https://github.com/openai/whisper#available-models-and-languages)
+and [Fairseq: No Language Left Behind](https://github.com/facebookresearch/fairseq/tree/nllb#no-language-left-behind) 
+for detail.
+
 Winlin, 2023
