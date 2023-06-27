@@ -10,7 +10,9 @@ parser.add_argument("--output", type=str, required=True, help="Output stream nam
 parser.add_argument("--proxy", type=str, required=False, help="OpenAI API proxy, for example, x.y.z")
 parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for example, xxxyyyzzz")
 parser.add_argument("--trans", type=str, default='fairseq', help="Translation tool: fairseq, gpt. Default: fairseq")
-parser.add_argument("--cnsrc", type=str, default='asr', help="Source text for translation to Chinese: asr, en. Default: asr")
+parser.add_argument("--transsrc", type=str, default='asr', help="Source text for translation: asr, en. Default: asr")
+parser.add_argument("--source", type=str, default='eng_Latn', help="Source language. Default: eng_Latn")
+parser.add_argument("--target", type=str, default='zho_Hans', help="Target language. Default: zho_Hans")
 
 args = parser.parse_args()
 
@@ -19,7 +21,7 @@ OUTPUT=f"player/out/{args.output}"
 # available models: 'tiny', 'base', 'small', 'medium', 'large'
 # or english-only models: 'tiny.en', 'base.en', 'small.en', 'medium.en'
 # See https://github.com/ossrs/whisper#available-models-and-languages
-WHIPSER_MODEL="small.en"
+WHIPSER_MODEL="small"
 # available models: 'facebook/nllb-200-distilled-600M', 'facebook/nllb-200-1.3B', 'facebook/nllb-200-distilled-1.3B', 'facebook/nllb-200-3.3B'
 FAIRSEQ_MODEL="facebook/nllb-200-distilled-600M"
 
@@ -37,7 +39,9 @@ logs.append(f"whisper-model={WHIPSER_MODEL}")
 logs.append(f"translation={args.trans}")
 if args.trans == 'fairseq':
     logs.append(f"fairseq-model={FAIRSEQ_MODEL}")
-logs.append(f"cn-source={args.cnsrc}")
+logs.append(f"trans-source={args.transsrc}")
+logs.append(f"lang-source={args.source}")
+logs.append(f"lang-target={args.target}")
 logs.append(mem_info())
 logs.append(cost(starttime))
 print(f"args input={INPUT}, output={OUTPUT}, {', '.join(logs)}")
@@ -77,8 +81,8 @@ print(f"fairseq model {FAIRSEQ_MODEL} loading...")
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 model = AutoModelForSeq2SeqLM.from_pretrained(FAIRSEQ_MODEL)
 tokenizer = AutoTokenizer.from_pretrained(FAIRSEQ_MODEL)
-en_translator = pipeline('translation', model=model, tokenizer=tokenizer, src_lang='eng_Latn', tgt_lang='eng_Latn')
-cn_translator = pipeline('translation', model=model, tokenizer=tokenizer, src_lang='eng_Latn', tgt_lang='zho_Hans')
+en_translator = pipeline('translation', model=model, tokenizer=tokenizer, src_lang=args.source, tgt_lang=args.source)
+cn_translator = pipeline('translation', model=model, tokenizer=tokenizer, src_lang=args.source, tgt_lang=args.target)
 print(f"fairseq model loaded: {FAIRSEQ_MODEL}, {mem_info()}, {cost(starttime)}")
 
 def translate(translator, text):
@@ -311,7 +315,7 @@ def loop(ignoreFiles):
             translate_to_en(out_trans_en, out_asr, previous_out_asr, previous_out_trans_en)
             # Translate the final text to Chinese
             out_trans_cn = os.path.join(OUTPUT, f"{in_basename}.trans.cn.txt")
-            if args.cnsrc == 'asr':
+            if args.transsrc == 'asr':
                 translate_to_cn(out_trans_cn, out_asr, previous_out_asr, previous_out_trans_cn)
             else:
                 translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous_out_trans_cn)
