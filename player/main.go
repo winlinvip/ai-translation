@@ -92,7 +92,7 @@ func main() {
 			for _, fileInfo := range fileInfos {
 				basename := path.Base(fileInfo.Name)
 				filename := basename[0 : len(basename)-len(path.Ext(basename))]
-				if b, err := ioutil.ReadFile(path.Join(InputDirectory, in, fmt.Sprintf("%v.asr.final.txt", filename))); err == nil {
+				if b, err := ioutil.ReadFile(path.Join(InputDirectory, in, fmt.Sprintf("%v.asr.txt", filename))); err == nil {
 					fileInfo.ASR = string(b)
 				}
 				if b, err := ioutil.ReadFile(path.Join(InputDirectory, in, fmt.Sprintf("%v.trans.en.txt", filename))); err == nil {
