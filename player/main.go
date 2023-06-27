@@ -68,7 +68,7 @@ func getCreationTime(dir string, fileInfo os.FileInfo) (time.Time, error) {
 }
 
 func isAlphaNumeric(s string) bool {
-	re, err := regexp.Compile("^[a-zA-Z0-9]+$")
+	re, err := regexp.Compile("^[a-zA-Z0-9_\\-]+$")
 	if err != nil {
 		return false
 	}
