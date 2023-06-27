@@ -162,6 +162,7 @@ cython_debug/
 k2
 live
 models
+in
 input
 out
 test.html

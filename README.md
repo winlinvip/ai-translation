@@ -39,6 +39,15 @@ ffmpeg -i ~/git/srs/trunk/doc/source.flv -c copy \
   -y livestream.m3u8
 ```
 
+Please examine the directory, as it should contain some HLS files:
+
+```bash
+ls -lh ~/git/srs/trunk/objs/nginx/html/live
+#-rw-r--r--  632K Jun 28 07:36 livestream-0000.ts
+#-rw-r--r--  194K Jun 28 07:36 livestream-0001.ts
+#-rw-r--r--  303K Jun 28 07:36 livestream-0002.ts
+```
+
 Please note that the duration of each segment should be approximately 10 seconds, and 
 the filenames of the segments should be arranged in alphabetical order.
 
@@ -50,19 +59,13 @@ Download the main script and setup it by:
 cd ~/git
 git clone https://github.com/ossrs/ai-translation.git
 cd ~/git/ai-translation
-python -m venv venv
-```
-
-Then link directories and tools:
-
-```bash
-cd ~/git/ai-translation
-rm -f input && ln -sf ~/git/srs/trunk/objs/nginx/html/live input
+python3 -m venv venv
 ```
 
 Next, create a python venv and install dependencies:
 
 ```bash
+cd ~/git/ai-translation
 source venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -70,12 +73,25 @@ pip install -r requirements.txt
 Now, you can translate the HLS by:
 
 ```bash
-python translate.py --stream livestream --output livestream
+python translate.py --output player/out/livestream \
+  --stream ~/git/srs/trunk/objs/nginx/html/live/livestream
 ```
 
-The tool will process files from `live/livestream-*.ts` and generate output in 
-`out/livestream/*.txt`. You can then view the translated results using a player, 
-as described in the following chapter.
+The tool will process files from `~/git/srs/trunk/objs/nginx/html/live/livestream-*.ts` 
+and generate output in `player/out/livestream/*.txt`. Please examine the directory, as 
+it should contain some HLS and translation text files:
+
+```bash
+ls -lh player/out/livestream
+#-rw-r--r--   61B Jun 28 07:41 livestream-0000.asr.txt
+#-rw-r--r--   42B Jun 28 07:41 livestream-0000.trans.cn.txt
+#-rw-r--r--   46B Jun 28 07:41 livestream-0000.trans.en.txt
+#-rw-r--r--  632K Jun 28 07:36 livestream-0000.ts
+#-rw-r--r--  461K Jun 28 07:41 livestream-0000.wav
+```
+
+You can then view the translated results using a player, as described in the following 
+chapter.
 
 ### Player
 
@@ -166,8 +182,14 @@ configure the environment and execute the following command.
 ```bash
 export OPENAI_PROXY=x.y.z
 export OPENAI_API_KEY=sk-xxxyyyzzz
-python translate.py --stream livestream --output livestream --trans gpt
+python translate.py --output player/out/livestream \
+  --stream ~/git/srs/trunk/objs/nginx/html/live/livestream \
+  --trans gpt
 ```
+
+* `env OPENAI_PROXY` is for proxy, required if you are in China.
+* `env OPENAI_API_KEY` is for GPT API key, required if you want to use GPT.
+* `--trans gpt` is option to enable OpenAI GPT to translate.
 
 After conducting some tests, I believe that Fairseq is quite comparable to GPT in terms of 
 performance. However, GPT appears to generate slightly more natural output than Fairseq. 
@@ -199,8 +221,13 @@ It is capable of translating from one language to another without any limitation
 For example, translate from English to German:
 
 ```bash
-python translate.py --stream livestream --output livestream --source eng_Latn --target deu_Latn
+python translate.py --output player/out/livestream \
+  --stream ~/git/srs/trunk/objs/nginx/html/live/livestream \
+  --source eng_Latn --target deu_Latn
 ```
+
+* `--source eng_Latn` is the source language to input as English.
+* `--target deu_Latn` is the target language to translate as German.
 
 The following languages are some examples:
 

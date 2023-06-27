@@ -5,8 +5,8 @@ starttime = time.time()
 import os, re, subprocess, openai, argparse, psutil
 
 parser = argparse.ArgumentParser(description="Translation")
-parser.add_argument("--stream", type=str, required=True, help="Input stream name, for example, livestream")
-parser.add_argument("--output", type=str, required=True, help="Output stream name, for example, livestream")
+parser.add_argument("--stream", type=str, required=True, help="Input stream name, for example, in/livestream")
+parser.add_argument("--output", type=str, required=True, help="Output stream name, for example, player/out/livestream")
 parser.add_argument("--proxy", type=str, required=False, help="OpenAI API proxy, for example, x.y.z")
 parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for example, xxxyyyzzz")
 parser.add_argument("--trans", type=str, default='fairseq', help="Translation tool: fairseq, gpt. Default: fairseq")
@@ -16,8 +16,8 @@ parser.add_argument("--target", type=str, default='zho_Hans', help="Target langu
 
 args = parser.parse_args()
 
-INPUT=rf"input/{args.stream}-.*\.ts$"
-OUTPUT=f"player/out/{args.output}"
+INPUT=rf"{args.stream}-.*\.ts$"
+OUTPUT=f"{args.output}"
 # available models: 'tiny', 'base', 'small', 'medium', 'large'
 # or english-only models: 'tiny.en', 'base.en', 'small.en', 'medium.en'
 # See https://github.com/ossrs/whisper#available-models-and-languages
