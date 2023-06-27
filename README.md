@@ -44,39 +44,7 @@ ffmpeg -i ~/git/srs/trunk/doc/source.flv -c copy \
 Please note that the duration of each segment should be approximately 10 seconds, and 
 the filenames of the segments should be arranged in alphabetical order.
 
-## Whisper
-
-Install whisper for ASR to convert HLS to text:
-
-```bash
-cd ~/git
-git clone -b translation https://github.com/ossrs/whisper.git
-cd ~/git/whisper
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt 
-```
-
-[Whisper](https://github.com/ossrs/whisper) is an ASR tool derived from the OpenAI 
-Whisper open-source project, with an added tool.py to simplify its usage.
-
-### Fairseq
-
-Install fairseq to translate text to multiple languages:
-
-```bash
-cd ~/git
-git clone -b translation https://github.com/ossrs/fairseq.git
-cd ~/git/fairseq
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt 
-```
-
-[Fairseq](https://github.com/ossrs/fairseq) is a translation tool derived from the meta 
-fairseq open-source project, with an added tool.py to simplify its usage.
-
-### Script
+### Translator
 
 Download the main script and setup it by:
 
@@ -92,7 +60,6 @@ Then link directories and tools:
 ```bash
 cd ~/git/ai-translation
 mkdir -p player/out && rm -f out && ln -sf player/out out
-rm -f fairseq && ln -sf ~/git/fairseq fairseq
 rm -f live && ln -sf ~/git/srs/trunk/objs/nginx/html/live live
 ```
 
@@ -211,5 +178,13 @@ Both options are sufficiently effective.
 
 Since Fairseq is a free and open-source option, whereas GPT is a paid service, we have chosen 
 to use Fairseq by default.
+
+## (Optional) Annex A: About Whisper and Fairseq
+
+[Whisper](https://github.com/ossrs/whisper) is an ASR tool derived from the OpenAI 
+Whisper open-source project, with an added tool.py to simplify its usage.
+
+[Fairseq](https://github.com/ossrs/fairseq) is a translation tool derived from the meta 
+fairseq open-source project, with an added tool.py to simplify its usage.
 
 Winlin, 2023

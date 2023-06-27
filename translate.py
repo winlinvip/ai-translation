@@ -1,4 +1,8 @@
-import os, re, subprocess, openai, time, argparse, whisper
+
+import time
+starttime = time.time()
+
+import os, re, subprocess, openai, argparse, psutil
 
 parser = argparse.ArgumentParser(description="Translation")
 parser.add_argument("--stream", type=str, required=True, help="Input stream name, for example, livestream")
@@ -19,12 +23,23 @@ WHIPSER_MODEL="small.en"
 # available models: 'facebook/nllb-200-distilled-600M', 'facebook/nllb-200-1.3B', 'facebook/nllb-200-distilled-1.3B', 'facebook/nllb-200-3.3B'
 FAIRSEQ_MODEL="facebook/nllb-200-distilled-600M"
 
+def mem_info():
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    msg = mem_info.rss / (1024 * 1024)
+    return f"memory={msg:.1f}MB"
+
+def cost(starttime):
+    return f"cost={(time.time() - starttime):.2f}s"
+
 logs = []
 logs.append(f"whisper-model={WHIPSER_MODEL}")
 logs.append(f"translation={args.trans}")
 if args.trans == 'fairseq':
     logs.append(f"fairseq-model={FAIRSEQ_MODEL}")
 logs.append(f"cn-source={args.cnsrc}")
+logs.append(mem_info())
+logs.append(cost(starttime))
 print(f"args input={INPUT}, output={OUTPUT}, {', '.join(logs)}")
 
 PROMPT_EN="Correct typo while maintain the original structure: "
@@ -46,8 +61,41 @@ if args.trans == 'gpt':
     else:
         print("Warning: OPENAI_PROXY is not set")
 
+starttime = time.time()
+print(f"whisper model {WHIPSER_MODEL} loading...")
+import whisper
 whisper_model = whisper.load_model(WHIPSER_MODEL)
-print(f"whisper model loaded: {WHIPSER_MODEL}")
+print(f"whisper model loaded: {WHIPSER_MODEL}, {mem_info()}, {cost(starttime)}")
+
+#huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+#To disable this warning, you can either:
+#	- Avoid using `tokenizers` before the fork if possible
+#	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
+starttime = time.time()
+print(f"fairseq model {FAIRSEQ_MODEL} loading...")
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+model = AutoModelForSeq2SeqLM.from_pretrained(FAIRSEQ_MODEL)
+tokenizer = AutoTokenizer.from_pretrained(FAIRSEQ_MODEL)
+en_translator = pipeline('translation', model=model, tokenizer=tokenizer, src_lang='eng_Latn', tgt_lang='eng_Latn')
+cn_translator = pipeline('translation', model=model, tokenizer=tokenizer, src_lang='eng_Latn', tgt_lang='zho_Hans')
+print(f"fairseq model loaded: {FAIRSEQ_MODEL}, {mem_info()}, {cost(starttime)}")
+
+def translate(translator, text):
+    result = []
+    paragraphs = text.split('\n')
+    for paragraph in paragraphs:
+        if paragraph == '':
+            continue
+        sentences = paragraph.split('.')
+        for sentence in sentences:
+            if sentence == '':
+                continue
+            output = translator(f"{sentence}.", max_length=128)
+            translated_text = output[0]['translation_text']
+            result.append(f"{translated_text} ")
+        result.append('\n')
+    return ''.join(result)
 
 def get_sorted_ts_files(input_name, live_folder):
     ts_files = []
@@ -86,9 +134,11 @@ def get_asr_result(text):
 
 def convert_ts_to_wav(in_filepath, out_filepath):
     if not os.path.exists(out_filepath):
+        starttime = time.time()
         print(f"convert {in_filepath} to {out_filepath}")
         execute_cli(f"mkdir -p {os.path.dirname(out_filepath)}")
         execute_cli(f"ffmpeg -i {in_filepath} -vn -acodec pcm_s16le -ar 16000 -ac 1 -y {out_filepath}")
+        print(f"convert {in_filepath} to {out_filepath}, {mem_info()}, {cost(starttime)}")
 
 def move_ts_to_output(in_filepath, out_tsfile):
     if not os.path.exists(out_tsfile):
@@ -98,6 +148,7 @@ def move_ts_to_output(in_filepath, out_tsfile):
 
 def generate_asr(in_filepath, out_filepath, out_asr):
     if not os.path.exists(out_asr) and os.path.exists(out_filepath):
+        starttime = time.time()
         print(f"generate ASR {out_filepath} to {out_asr}")
         execute_cli(f"mkdir -p {os.path.dirname(out_asr)}")
         result = whisper_model.transcribe(out_filepath, fp16=False)
@@ -107,7 +158,7 @@ def generate_asr(in_filepath, out_filepath, out_asr):
         if asr_text.strip() == '':
             raise CustomException(in_filepath, f"ASR text is empty, file is {out_filepath}")
         asr_text = asr_text.lower()
-        print(f"Write ASR {out_asr}, text is {asr_text}")
+        print(f"Write ASR {out_asr}, text is {asr_text}, {mem_info()}, {cost(starttime)}")
         with open(out_asr, 'w') as f:
             f.write(asr_text)
 
@@ -116,14 +167,14 @@ def translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_t
     for i in range(3):
         try:
             if not os.path.exists(out_trans_cn) and os.path.exists(out_finalasr):
+                starttime = time.time()
                 with open(out_finalasr, 'r') as f:
                     src_text = f.read()
                 if src_text.strip() == '<unk>':
                     print(f"Warning: ASR {out_finalasr} is <unk>, ignore")
                     return
                 if args.trans == 'fairseq':
-                    abs_path = os.path.abspath(out_finalasr)
-                    trans_text = execute_result(f"bash ./fairseq/tool.sh --model={FAIRSEQ_MODEL} --source eng_Latn --target zho_Hans --text {abs_path}")[0]
+                    trans_text = translate(cn_translator, src_text)
                 else:
                     messages = []
                     if previous_out_asr is not None and os.path.exists(previous_out_asr):
@@ -140,7 +191,7 @@ def translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_t
                         messages=messages,
                     )
                     trans_text = completion.choices[0].message.content
-                print(f"Translate {src_text} to {trans_text}")
+                print(f"Translate {src_text} to {trans_text}, {mem_info()}, {cost(starttime)}")
                 with open(out_trans_cn, 'w') as f:
                     f.write(trans_text)
             break
@@ -154,14 +205,14 @@ def translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous
     for i in range(3):
         try:
             if not os.path.exists(out_trans_cn) and os.path.exists(out_trans_en):
+                starttime = time.time()
                 with open(out_trans_en, 'r') as f:
                     src_text = f.read()
                 if src_text.strip() == '':
                     print(f"Warning: English {out_trans_en} is empty, ignore")
                     return
                 if args.trans == 'fairseq':
-                    abs_path = os.path.abspath(out_trans_en)
-                    trans_text = execute_result(f"bash ./fairseq/tool.sh --model={FAIRSEQ_MODEL} --source eng_Latn --target zho_Hans --text {abs_path}")[0]
+                    trans_text = translate(cn_translator, src_text)
                 else:
                     messages = []
                     if previous_out_trans_en is not None and os.path.exists(previous_out_trans_en):
@@ -178,7 +229,7 @@ def translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous
                         messages=messages,
                     )
                     trans_text = completion.choices[0].message.content
-                print(f"Translate {src_text} to {trans_text}")
+                print(f"Translate {src_text} to {trans_text}, {mem_info()}, {cost(starttime)}")
                 with open(out_trans_cn, 'w') as f:
                     f.write(trans_text)
             break
@@ -192,14 +243,14 @@ def translate_to_en(out_trans_en, out_finalasr, previous_out_asr, previous_out_t
     for i in range(3):
         try:
             if not os.path.exists(out_trans_en) and os.path.exists(out_finalasr):
+                starttime = time.time()
                 with open(out_finalasr, 'r') as f:
                     src_text = f.read()
                 if src_text.strip() == '<unk>':
                     print(f"Warning: ASR {out_finalasr} is <unk>, ignore")
                     return
                 if args.trans == 'fairseq':
-                    abs_path = os.path.abspath(out_finalasr)
-                    trans_text = execute_result(f"bash ./fairseq/tool.sh --model={FAIRSEQ_MODEL} --source eng_Latn --target eng_Latn --text {abs_path}")[0]
+                    trans_text = translate(en_translator, src_text)
                 else:
                     messages = []
                     if previous_out_asr is not None and os.path.exists(previous_out_asr):
@@ -216,7 +267,7 @@ def translate_to_en(out_trans_en, out_finalasr, previous_out_asr, previous_out_t
                         messages=messages,
                     )
                     trans_text = completion.choices[0].message.content
-                print(f"Translate {src_text} to {trans_text}")
+                print(f"Translate {src_text} to {trans_text}, {mem_info()}, {cost(starttime)}")
                 with open(out_trans_en, 'w') as f:
                     f.write(trans_text)
             break
@@ -247,6 +298,7 @@ def loop(ignoreFiles):
         if in_filepath in ignoreFiles:
             continue
         try:
+            starttime = time.time()
             in_basename = os.path.splitext(os.path.basename(in_filepath))[0]
             # Convert TS to WAV
             out_filepath = os.path.join(OUTPUT, f"{in_basename}.wav")
@@ -267,6 +319,7 @@ def loop(ignoreFiles):
             out_infile = os.path.join(OUTPUT, f"{in_basename}.ts")
             move_ts_to_output(in_filepath, out_infile)
             in_filepath = out_infile
+            print(f"Finished {in_filepath} to {out_infile}, {mem_info()}, {cost(starttime)}")
         finally:
             previous_in_filepath = in_filepath
             previous_out_asr = out_asr
