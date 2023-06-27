@@ -35,7 +35,7 @@ Then, use FFmpeg to convert audio file to HLS:
 mkdir -p ~/git/srs/trunk/objs/nginx/html/live
 cd ~/git/srs/trunk/objs/nginx/html/live
 ffmpeg -i ~/git/srs/trunk/doc/source.flv -c copy \
-  -f hls -hls_time 10 -hls_segment_filename 'livestream-%04d.ts' \
+  -f hls -hls_time 15 -hls_segment_filename 'livestream-%04d.ts' \
   -y livestream.m3u8
 ```
 
@@ -48,7 +48,7 @@ ls -lh ~/git/srs/trunk/objs/nginx/html/live
 #-rw-r--r--  303K Jun 28 07:36 livestream-0002.ts
 ```
 
-Please note that the duration of each segment should be approximately 10 seconds, and 
+Please note that the duration of each segment should be approximately 10~30 seconds, and 
 the filenames of the segments should be arranged in alphabetical order.
 
 ### Translator
@@ -129,27 +129,27 @@ cd ~/git/srs/trunk
 make
 ```
 
-Next, configure SRS with HLS to ensure that the segment names are arranged alphabetically:
+Next, create a file named `ai.translation.conf` and configure SRS with HLS to ensure 
+that the segment names are arranged alphabetically:
 
 ```nginx
-# ai.translation.conf
-listen              1935;
-max_connections     1000;
-srs_log_tank        console;
-daemon              off;
+listen 1935;
+max_connections 1000;
+srs_log_tank console;
+daemon off;
 http_api {
-    enabled         on;
-    listen          1985;
+    enabled on;
+    listen 1985;
 }
 http_server {
-    enabled         on;
-    listen          8080;
-    dir             ./objs/nginx/html;
+    enabled on;
+    listen 8080;
+    dir ./objs/nginx/html;
 }
 vhost __defaultVhost__ {
     hls {
-        enabled         on;
-        hls_fragment 20;
+        enabled on;
+        hls_fragment 15;
         hls_ts_file [app]/[stream]-[02]-[15][04][05]-[seq].ts;
         hls_cleanup off;
     }
