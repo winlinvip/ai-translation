@@ -14,8 +14,8 @@ parser.add_argument("--cnsrc", type=str, default='asr', help="Source text for tr
 
 args = parser.parse_args()
 
-INPUT=rf"live/{args.stream}-.*\.ts$"
-OUTPUT=f"out/{args.output}"
+INPUT=rf"input/{args.stream}-.*\.ts$"
+OUTPUT=f"player/out/{args.output}"
 # available models: 'tiny', 'base', 'small', 'medium', 'large'
 # or english-only models: 'tiny.en', 'base.en', 'small.en', 'medium.en'
 # See https://github.com/ossrs/whisper#available-models-and-languages

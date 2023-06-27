@@ -162,6 +162,7 @@ cython_debug/
 k2
 live
 models
+input
 out
 test.html
 .DS_Store

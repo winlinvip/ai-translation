@@ -8,13 +8,7 @@ AI translation for English study based on FFmpeg, Whisper, Fairseq, OBS, SRS, an
 
 The following is the usage of the AI translation.
 
-* FFmpeg, OBS, or SRS: Ingest and convert audio stream to HLS.
-* Whisper: ASR to convert audio to text.
-* Fairseq or GPT: Translate text to multiple languages.
-
-OBS, SRS, and GPT are not mandatory; you can simply utilize FFmpeg, Whisper, and Fairseq.
-
-## FFmpeg
+### FFmpeg
 
 You can install FFmpeg by following the instructions provided in the 
 [FFmpeg documentation](https://ffmpeg.org/download.html).
@@ -59,8 +53,7 @@ Then link directories and tools:
 
 ```bash
 cd ~/git/ai-translation
-mkdir -p player/out && rm -f out && ln -sf player/out out
-rm -f live && ln -sf ~/git/srs/trunk/objs/nginx/html/live live
+rm -f input && ln -sf ~/git/srs/trunk/objs/nginx/html/live input
 ```
 
 Next, create a python venv and install dependencies:
@@ -180,6 +173,14 @@ Since Fairseq is a free and open-source option, whereas GPT is a paid service, w
 to use Fairseq by default.
 
 ## (Optional) Annex A: About Whisper and Fairseq
+
+We use the following tools to translate the audio stream:
+
+* FFmpeg, OBS, or SRS: Ingest and convert audio stream to HLS.
+* Whisper: ASR to convert audio to text.
+* Fairseq or GPT: Translate text to multiple languages.
+
+OBS, SRS, and GPT are not mandatory; you can simply utilize FFmpeg, Whisper, and Fairseq.
 
 [Whisper](https://github.com/ossrs/whisper) is an ASR tool derived from the OpenAI 
 Whisper open-source project, with an added tool.py to simplify its usage.
