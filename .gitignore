@@ -165,3 +165,7 @@ models
 out
 test.html
 .DS_Store
+whisper
+fairseq
+
+

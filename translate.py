@@ -6,6 +6,7 @@ parser.add_argument("--output", type=str, required=True, help="Output stream nam
 parser.add_argument("--proxy", type=str, required=False, help="OpenAI API proxy, for example, x.y.z")
 parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for example, xxxyyyzzz")
 parser.add_argument("--asr", type=str, default='whipser', help="ASR tool, for example, k2, whipser")
+parser.add_argument("--trans", type=str, default='fairseq', help="Translation tool, for example, gpt, fairseq")
 
 args = parser.parse_args()
 
@@ -15,8 +16,9 @@ MODELS=f"./models/tokens.txt ./models/encoder_jit_trace-pnnx.ncnn.param " \
        f"./models/encoder_jit_trace-pnnx.ncnn.bin ./models/decoder_jit_trace-pnnx.ncnn.param " \
        f"./models/decoder_jit_trace-pnnx.ncnn.bin ./models/joiner_jit_trace-pnnx.ncnn.param " \
        f"./models/joiner_jit_trace-pnnx.ncnn.bin"
-WHIPSER_MODEL="base"
-print(f"args input={INPUT}, output={OUTPUT}, asr={args.asr}, k2-models={MODELS}, whipser-model={WHIPSER_MODEL}")
+# See https://github.com/ossrs/whisper#available-models-and-languages
+WHIPSER_MODEL="base.en"
+print(f"args input={INPUT}, output={OUTPUT}, asr={args.asr}, k2-models={MODELS}, whipser-model={WHIPSER_MODEL}, translation={args.trans}")
 
 PROMPT_EN="Correct typo while maintain the original structure: "
 PROMPT_EN_POSTFIX="Make sure to directly output the result without details."
@@ -159,26 +161,30 @@ def translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_t
     for i in range(3):
         try:
             if not os.path.exists(out_trans_cn) and os.path.exists(out_finalasr):
-                messages = []
-                if previous_out_asr is not None and os.path.exists(previous_out_asr):
-                    with open(previous_out_asr, 'r') as f:
-                        previous_text = f.read()
-                    messages.append({"role": "user", "content": f"{PRMOPT_CN}\n'{previous_text}'"})
-                if previous_out_trans_cn is not None and os.path.exists(previous_out_trans_cn):
-                    with open(previous_out_trans_cn, 'r') as f:
-                        previous_text = f.read()
-                    messages.append({"role": "assistant", "content": f"{previous_text}"})
                 with open(out_finalasr, 'r') as f:
                     src_text = f.read()
                 if src_text.strip() == '<unk>':
                     print(f"Warning: ASR {out_finalasr} is <unk>, ignore")
                     return
-                messages.append({"role": "user", "content": f"{PRMOPT_CN}\n'{src_text}'"})
-                completion = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=messages,
-                )
-                trans_text = completion.choices[0].message.content
+                if args.trans == 'fairseq':
+                    abs_path = os.path.abspath(out_finalasr)
+                    trans_text = execute_result(f"bash ./fairseq/tool.sh --source eng_Latn --target zho_Hans --text {abs_path}")[0]
+                else:
+                    messages = []
+                    if previous_out_asr is not None and os.path.exists(previous_out_asr):
+                        with open(previous_out_asr, 'r') as f:
+                            previous_text = f.read()
+                        messages.append({"role": "user", "content": f"{PRMOPT_CN}\n'{previous_text}'"})
+                    if previous_out_trans_cn is not None and os.path.exists(previous_out_trans_cn):
+                        with open(previous_out_trans_cn, 'r') as f:
+                            previous_text = f.read()
+                        messages.append({"role": "assistant", "content": f"{previous_text}"})
+                    messages.append({"role": "user", "content": f"{PRMOPT_CN}\n'{src_text}'"})
+                    completion = openai.ChatCompletion.create(
+                        model="gpt-3.5-turbo",
+                        messages=messages,
+                    )
+                    trans_text = completion.choices[0].message.content
                 print(f"Translate {src_text} to {trans_text}")
                 with open(out_trans_cn, 'w') as f:
                     f.write(trans_text)
@@ -193,26 +199,30 @@ def translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous
     for i in range(3):
         try:
             if not os.path.exists(out_trans_cn) and os.path.exists(out_trans_en):
-                messages = []
-                if previous_out_trans_en is not None and os.path.exists(previous_out_trans_en):
-                    with open(previous_out_trans_en, 'r') as f:
-                        previous_text = f.read()
-                    messages.append({"role": "user", "content": f"{PRMOPT_CN}\n'{previous_text}'"})
-                if previous_out_trans_cn is not None and os.path.exists(previous_out_trans_cn):
-                    with open(previous_out_trans_cn, 'r') as f:
-                        previous_text = f.read()
-                    messages.append({"role": "assistant", "content": f"{previous_text}"})
                 with open(out_trans_en, 'r') as f:
                     src_text = f.read()
                 if src_text.strip() == '':
                     print(f"Warning: English {out_trans_en} is empty, ignore")
                     return
-                messages.append({"role": "user", "content": f"{PRMOPT_CN}\n'{src_text}'"})
-                completion = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=messages,
-                )
-                trans_text = completion.choices[0].message.content
+                if args.trans == 'fairseq':
+                    abs_path = os.path.abspath(out_trans_en)
+                    trans_text = execute_result(f"bash ./fairseq/tool.sh --source eng_Latn --target zho_Hans --text {abs_path}")[0]
+                else:
+                    messages = []
+                    if previous_out_trans_en is not None and os.path.exists(previous_out_trans_en):
+                        with open(previous_out_trans_en, 'r') as f:
+                            previous_text = f.read()
+                        messages.append({"role": "user", "content": f"{PRMOPT_CN}\n'{previous_text}'"})
+                    if previous_out_trans_cn is not None and os.path.exists(previous_out_trans_cn):
+                        with open(previous_out_trans_cn, 'r') as f:
+                            previous_text = f.read()
+                        messages.append({"role": "assistant", "content": f"{previous_text}"})
+                    messages.append({"role": "user", "content": f"{PRMOPT_CN}\n'{src_text}'"})
+                    completion = openai.ChatCompletion.create(
+                        model="gpt-3.5-turbo",
+                        messages=messages,
+                    )
+                    trans_text = completion.choices[0].message.content
                 print(f"Translate {src_text} to {trans_text}")
                 with open(out_trans_cn, 'w') as f:
                     f.write(trans_text)
@@ -227,26 +237,30 @@ def translate_to_en(out_trans_en, out_finalasr, previous_out_asr, previous_out_t
     for i in range(3):
         try:
             if not os.path.exists(out_trans_en) and os.path.exists(out_finalasr):
-                messages = []
-                if previous_out_asr is not None and os.path.exists(previous_out_asr):
-                    with open(previous_out_asr, 'r') as f:
-                        previous_text = f.read()
-                    messages.append({"role": "user", "content": f"{PROMPT_EN}\n'{previous_text}'"})
-                if previous_out_trans_en is not None and os.path.exists(previous_out_trans_en):
-                    with open(previous_out_trans_en, 'r') as f:
-                        previous_text = f.read()
-                    messages.append({"role": "assistant", "content": f"{previous_text}"})
                 with open(out_finalasr, 'r') as f:
                     src_text = f.read()
                 if src_text.strip() == '<unk>':
                     print(f"Warning: ASR {out_finalasr} is <unk>, ignore")
                     return
-                messages.append({"role": "user", "content": f"{PROMPT_EN}\n'{src_text}'\n{PROMPT_EN_POSTFIX}"})
-                completion = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=messages,
-                )
-                trans_text = completion.choices[0].message.content
+                if args.trans == 'fairseq':
+                    abs_path = os.path.abspath(out_finalasr)
+                    trans_text = execute_result(f"bash ./fairseq/tool.sh --source eng_Latn --target eng_Latn --text {abs_path}")[0]
+                else:
+                    messages = []
+                    if previous_out_asr is not None and os.path.exists(previous_out_asr):
+                        with open(previous_out_asr, 'r') as f:
+                            previous_text = f.read()
+                        messages.append({"role": "user", "content": f"{PROMPT_EN}\n'{previous_text}'"})
+                    if previous_out_trans_en is not None and os.path.exists(previous_out_trans_en):
+                        with open(previous_out_trans_en, 'r') as f:
+                            previous_text = f.read()
+                        messages.append({"role": "assistant", "content": f"{previous_text}"})
+                    messages.append({"role": "user", "content": f"{PROMPT_EN}\n'{src_text}'\n{PROMPT_EN_POSTFIX}"})
+                    completion = openai.ChatCompletion.create(
+                        model="gpt-3.5-turbo",
+                        messages=messages,
+                    )
+                    trans_text = completion.choices[0].message.content
                 print(f"Translate {src_text} to {trans_text}")
                 with open(out_trans_en, 'w') as f:
                     f.write(trans_text)
