@@ -4,6 +4,10 @@
 
 AI translation for English study based on FFmpeg, Whisper, Fairseq, OBS, SRS, and GPT.
 
+![](https://github.com/ossrs/ai-translation/assets/2777660/fc0bee11-1681-46ce-a249-d31e438525e7)
+
+> Note: Additionally, it is capable of translating from one language to another without any limitations.
+
 ## Usage
 
 The following is the usage of the AI translation.
