@@ -13,6 +13,8 @@ parser.add_argument("--trans", type=str, default='fairseq', help="Translation to
 parser.add_argument("--transsrc", type=str, default='asr', help="Source text for translation: asr, en. Default: asr")
 parser.add_argument("--source", type=str, default='eng_Latn', help="Source language. Default: eng_Latn")
 parser.add_argument("--target", type=str, default='zho_Hans', help="Target language. Default: zho_Hans")
+parser.add_argument("--whisper", type=str, default='small', help="The whisper model: tiny, base, small, medium, large. Default: small")
+parser.add_argument("--fairseq", type=str, default='200-distilled-600M', help="The fairseq NLLB model: 200-distilled-600M, 200-1.3B, 200-distilled-1.3B, 200-3.3B. Default: 200-distilled-600M")
 
 args = parser.parse_args()
 
@@ -21,9 +23,9 @@ OUTPUT=f"{args.output}"
 # available models: 'tiny', 'base', 'small', 'medium', 'large'
 # or english-only models: 'tiny.en', 'base.en', 'small.en', 'medium.en'
 # See https://github.com/ossrs/whisper#available-models-and-languages
-WHIPSER_MODEL="small"
+WHIPSER_MODEL=args.whisper
 # available models: 'facebook/nllb-200-distilled-600M', 'facebook/nllb-200-1.3B', 'facebook/nllb-200-distilled-1.3B', 'facebook/nllb-200-3.3B'
-FAIRSEQ_MODEL="facebook/nllb-200-distilled-600M"
+FAIRSEQ_MODEL=f"facebook/nllb-{args.fairseq}"
 
 def mem_info():
     process = psutil.Process(os.getpid())
