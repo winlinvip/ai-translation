@@ -10,7 +10,7 @@ parser.add_argument("--output", type=str, required=True, help="Output stream nam
 parser.add_argument("--proxy", type=str, required=False, help="OpenAI API proxy, for example, x.y.z")
 parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for example, xxxyyyzzz")
 parser.add_argument("--trans", type=str, default='fairseq', help="Translation tool: fairseq, gpt. Default: fairseq")
-parser.add_argument("--transsrc", type=str, default='asr', help="Source text for translation: asr, en. Default: asr")
+parser.add_argument("--transsrc", type=str, default='asr', help="Text for translation: asr, source. Default: asr")
 parser.add_argument("--source", type=str, default='eng_Latn', help="Source language. Default: eng_Latn")
 parser.add_argument("--target", type=str, default='zho_Hans', help="Target language. Default: zho_Hans")
 parser.add_argument("--whisper", type=str, default='small', help="The whisper model: tiny, base, small, medium, large. Default: small")
