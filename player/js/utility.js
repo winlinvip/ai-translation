@@ -5,3 +5,10 @@ function filterContent(content) {
     return content;
 };
 
+function scrollToSegment(scrollableDiv, tr) {
+    scrollableDiv.animate({
+        scrollTop: tr.offset().top - scrollableDiv.offset().top + scrollableDiv.scrollTop()
+            - scrollableDiv.height() / 2 + tr.height() / 2
+    }, 1000);
+}
+

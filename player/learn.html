@@ -15,8 +15,53 @@
 </head>
 <body>
     <div class="container-fluid">
-        <video id="video_player" controls autoplay style="height:576px"></video>
-        <div id="div-segments" style="height: 700px; overflow: scroll">
+        <div class="row">
+            <div class="col">
+                <video id="video_player" controls autoplay style="height:560px"></video>
+            </div>
+            <div class="col">
+                <div class="mb-3">
+                    <label for="font-size" class="form-label">Font size</label>
+                    <div class="input-group" id="font-size">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios1" value="fs-6" checked>
+                            <label class="form-check-label fs-6" for="fontSizeRadios1">
+                                Default
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios2" value="fs-5">
+                            <label class="form-check-label fs-6" for="fontSizeRadios2">
+                                Large
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios3" value="fs-3">
+                            <label class="form-check-label fs-6" for="fontSizeRadios3">
+                                Larger
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios4" value="fs-1">
+                            <label class="form-check-label fs-6" for="fontSizeRadios4">
+                                Largest
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-text" id="basic-addon4">Set the font size for source and target.</div>
+                </div>
+            </div>
+            <script type="text/javascript">
+                $(function(){
+                    $('input[type=radio][name=fontSizeRadios]').on('change', function() {
+                        const selectedFontSize = $(this).val();
+                        $('#segments tr').removeClass('fs-1 fs-2 fs-3 fs-4 fs-5 fs-6');
+                        $('#segments tr').addClass(selectedFontSize);
+                    });
+                });
+            </script>
+        </div>
+        <div id="div-segments" style="height: 480px; overflow: scroll">
             <table class="table table-striped">
                 <thead>
                     <tr>
@@ -135,12 +180,7 @@
                 tsPlayer.play();
 
                 tr.addClass('table-success');
-
-                var scrollableDiv = $('#div-segments');
-                scrollableDiv.animate({
-                    scrollTop: tr.offset().top - scrollableDiv.offset().top + scrollableDiv.scrollTop()
-                        - scrollableDiv.height() / 2 * 0.8
-                }, 1000);
+                scrollToSegment($('#div-segments'), tr);
             };
 
             const replayInterval = 2100; // in ms.
@@ -149,12 +189,13 @@
                     exists.rountrip = exists.rountrip || 0;
                 }
 
-                if (!exists || exists.rountrip < 1) {
+                if (!exists || exists.rountrip === 0) {
                     tr.find('td').eq(2).text('');
                     tr.find('td').eq(3).text('');
-                } else {
+                } else if (exists.rountrip === 1) {
                     tr.find('td').eq(2).text(filterContent(segment.en));
                     tr.find('td').eq(3).text(filterContent(segment.cn));
+                    scrollToSegment($('#div-segments'), tr);
                 }
             };
             const onSegmentEnd = (video, tr, segment, index, current, end, next, nextTR) => {
