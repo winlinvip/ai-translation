@@ -20,46 +20,100 @@
                 <video id="video_player" controls autoplay style="height:560px"></video>
             </div>
             <div class="col">
-                <div class="mb-3">
-                    <label for="font-size" class="form-label">Font size</label>
-                    <div class="input-group" id="font-size">
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios1" value="fs-6" checked>
-                            <label class="form-check-label fs-6" for="fontSizeRadios1">
-                                Default
-                            </label>
+                <div class="row">
+                    <div class="mb-3">
+                        <label for="font-size" class="form-label">Font size</label>
+                        <div class="input-group" id="font-size">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios1" value="fs-6" checked>
+                                <label class="form-check-label fs-6" for="fontSizeRadios1">
+                                    Default
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios2" value="fs-5">
+                                <label class="form-check-label fs-6" for="fontSizeRadios2">
+                                    Large
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios3" value="fs-3">
+                                <label class="form-check-label fs-6" for="fontSizeRadios3">
+                                    Larger
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios4" value="fs-1">
+                                <label class="form-check-label fs-6" for="fontSizeRadios4">
+                                    Largest
+                                </label>
+                            </div>
                         </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios2" value="fs-5">
-                            <label class="form-check-label fs-6" for="fontSizeRadios2">
-                                Large
-                            </label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios3" value="fs-3">
-                            <label class="form-check-label fs-6" for="fontSizeRadios3">
-                                Larger
-                            </label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="fontSizeRadios" id="fontSizeRadios4" value="fs-1">
-                            <label class="form-check-label fs-6" for="fontSizeRadios4">
-                                Largest
-                            </label>
-                        </div>
+                        <div class="form-text" id="basic-addon4">Set the font size for source and target.</div>
                     </div>
-                    <div class="form-text" id="basic-addon4">Set the font size for source and target.</div>
+                    <script type="text/javascript">
+                        $(function(){
+                            $('input[type=radio][name=fontSizeRadios]').on('change', function() {
+                                const selectedFontSize = $(this).val();
+                                $('#segments tr').removeClass('fs-1 fs-2 fs-3 fs-4 fs-5 fs-6');
+                                $('#segments tr').addClass(selectedFontSize);
+                            });
+                        });
+                    </script>
+                </div>
+                <div class="row">
+                    <div class="mb-3">
+                        <label for="text-fields" class="form-label">Show text</label>
+                        <div class="input-group" id="text-fields">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="textFieldCheckboxes" id="textFieldCb1" value="0" checked>
+                                <label class="form-check-label fs-6" for="textFieldCb1">
+                                    Filename
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="textFieldCheckboxes" id="textFieldCb2" value="1" checked>
+                                <label class="form-check-label fs-6" for="textFieldCb2">
+                                    ASR
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="textFieldCheckboxes" id="textFieldCb3" value="2" checked>
+                                <label class="form-check-label fs-6" for="textFieldCb3">
+                                    Source
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="textFieldCheckboxes" id="textFieldCb4" value="3" checked>
+                                <label class="form-check-label fs-6" for="textFieldCb4">
+                                    Target
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-text" id="basic-addon5">Show fields of text.</div>
+                    </div>
+                    <script type="text/javascript">
+                        var onPostAppendTr = null;
+                        $(function(){
+                            const onClickCheckbox = (self) => {
+                                const index = parseInt($(self).val()) + 1;
+                                const show = $(self).is(':checked');
+                                const target = $(`table thead th:nth-child(${index}), table tbody td:nth-child(${index})`);
+                                show ? target.show() : target.hide();
+                            };
+                            $('input[type=checkbox][name=textFieldCheckboxes]').on('change', function() {
+                                onClickCheckbox(this);
+                            });
+                            onPostAppendTr = (tr, count) => {
+                                if (count <= 1) return;
+                                $('#text-fields input[type="checkbox"]').each(function() {
+                                    onClickCheckbox(this);
+                                });
+                            }
+                        });
+                    </script>
                 </div>
             </div>
-            <script type="text/javascript">
-                $(function(){
-                    $('input[type=radio][name=fontSizeRadios]').on('change', function() {
-                        const selectedFontSize = $(this).val();
-                        $('#segments tr').removeClass('fs-1 fs-2 fs-3 fs-4 fs-5 fs-6');
-                        $('#segments tr').addClass(selectedFontSize);
-                    });
-                });
-            </script>
         </div>
         <div id="div-segments" style="height: 480px; overflow: scroll">
             <table class="table table-striped">
@@ -80,6 +134,7 @@
         var tsPlayer = null;
         var db = {
             data: [],
+            count: 0,
             get: function (key) {
                 for (let i = 0; i < db.data.length; i++) {
                     if (db.data[i].name === key) {
@@ -115,6 +170,7 @@
                         }
                     });
                 });
+                db.count++;
 
                 for (let i = 0; i < data.length; i++) {
                     const index = i;
@@ -125,8 +181,8 @@
                         <tr id="tr-${index}">
                             <td class="col-1"></td>
                             <td class="col-3"></td>
-                            <td class="col-3"></td>
-                            <td class="col-3"></td>
+                            <td></td>
+                            <td></td>
                         </tr>
                     `);
                     tr.find('td').eq(0).text(segment.name);
@@ -141,6 +197,7 @@
                             playSegment(tr, segment, index);
                         });
                         $('#segments').append(tr);
+                        onPostAppendTr && onPostAppendTr(tr, db.count);
                     }
                 }
             };
