@@ -11,8 +11,9 @@ parser.add_argument("--proxy", type=str, required=False, help="OpenAI API proxy,
 parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for example, xxxyyyzzz")
 parser.add_argument("--trans", type=str, default='fairseq', help="Translation tool: fairseq, gpt. Default: fairseq")
 parser.add_argument("--transsrc", type=str, default='asr', help="Text for translation: asr, source. Default: asr")
-parser.add_argument("--source", type=str, default='eng_Latn', help="Source language. Default: eng_Latn")
-parser.add_argument("--target", type=str, default='zho_Hans', help="Target language. Default: zho_Hans")
+parser.add_argument("--opsrc", type=str, default='mv', help="Operate the source ts file: mv, cp. Default: mv")
+parser.add_argument("--source", type=str, default='eng_Latn', help="Source language: eng_Latn, zho_Hans, kor_Hang, fra_Latn, spa_Latn, ita_Latn, deu_Latn, jpn_Jpan, pol_Latn. Default: eng_Latn")
+parser.add_argument("--target", type=str, default='zho_Hans', help="Target language: eng_Latn, zho_Hans, kor_Hang, fra_Latn, spa_Latn, ita_Latn, deu_Latn, jpn_Jpan, pol_Latn. Default: zho_Hans")
 parser.add_argument("--whisper", type=str, default='small', help="The whisper model: tiny, base, small, medium, large. Default: small")
 parser.add_argument("--fairseq", type=str, default='200-distilled-600M', help="The fairseq NLLB model: 200-distilled-600M, 200-1.3B, 200-distilled-1.3B, 200-3.3B. Default: 200-distilled-600M")
 
@@ -42,6 +43,7 @@ logs.append(f"translation={args.trans}")
 if args.trans == 'fairseq':
     logs.append(f"fairseq-model={FAIRSEQ_MODEL}")
 logs.append(f"trans-source={args.transsrc}")
+logs.append(f"operate-source={args.opsrc}")
 logs.append(f"lang-source={args.source}")
 logs.append(f"lang-target={args.target}")
 logs.append(mem_info())
@@ -83,8 +85,8 @@ print(f"fairseq model {FAIRSEQ_MODEL} loading...")
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 model = AutoModelForSeq2SeqLM.from_pretrained(FAIRSEQ_MODEL)
 tokenizer = AutoTokenizer.from_pretrained(FAIRSEQ_MODEL)
-en_translator = pipeline('translation', model=model, tokenizer=tokenizer, src_lang=args.source, tgt_lang=args.source)
-cn_translator = pipeline('translation', model=model, tokenizer=tokenizer, src_lang=args.source, tgt_lang=args.target)
+source_translator = pipeline('translation', model=model, tokenizer=tokenizer, src_lang=args.source, tgt_lang=args.source)
+target_translator = pipeline('translation', model=model, tokenizer=tokenizer, src_lang=args.source, tgt_lang=args.target)
 print(f"fairseq model loaded: {FAIRSEQ_MODEL}, {mem_info()}, {cost(starttime)}")
 
 def translate(translator, text):
@@ -146,11 +148,15 @@ def convert_ts_to_wav(in_filepath, out_filepath):
         execute_cli(f"ffmpeg -i {in_filepath} -vn -acodec pcm_s16le -ar 16000 -ac 1 -y {out_filepath}")
         print(f"convert {in_filepath} to {out_filepath}, {mem_info()}, {cost(starttime)}")
 
-def move_ts_to_output(in_filepath, out_tsfile):
-    if not os.path.exists(out_tsfile):
-        print(f"move {in_filepath} to {out_tsfile}")
-        execute_cli(f"mkdir -p {os.path.dirname(out_tsfile)}")
-        execute_cli(f"mv {in_filepath} {out_tsfile}")
+def operate_ts_to_output(in_filepath, out_tsfile):
+    print(f"operate {in_filepath} {args.opsrc} to {out_tsfile}")
+    execute_cli(f"mkdir -p {os.path.dirname(out_tsfile)}")
+    if args.opsrc == 'cp':
+        execute_cli(f"cp -f {in_filepath} {out_tsfile}")
+    elif args.opsrc == 'mv':
+        execute_cli(f"mv -f {in_filepath} {out_tsfile}")
+    else:
+        print(f"ignore invalid opsrc: {args.opsrc} on {in_filepath}")
 
 def generate_asr(in_filepath, out_filepath, out_asr):
     if not os.path.exists(out_asr) and os.path.exists(out_filepath):
@@ -180,7 +186,7 @@ def translate_to_cn(out_trans_cn, out_finalasr, previous_out_asr, previous_out_t
                     print(f"Warning: ASR {out_finalasr} is <unk>, ignore")
                     return
                 if args.trans == 'fairseq':
-                    trans_text = translate(cn_translator, src_text)
+                    trans_text = translate(target_translator, src_text)
                 else:
                     messages = []
                     if previous_out_asr is not None and os.path.exists(previous_out_asr):
@@ -218,7 +224,7 @@ def translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous
                     print(f"Warning: English {out_trans_en} is empty, ignore")
                     return
                 if args.trans == 'fairseq':
-                    trans_text = translate(cn_translator, src_text)
+                    trans_text = translate(target_translator, src_text)
                 else:
                     messages = []
                     if previous_out_trans_en is not None and os.path.exists(previous_out_trans_en):
@@ -256,7 +262,7 @@ def translate_to_en(out_trans_en, out_finalasr, previous_out_asr, previous_out_t
                     print(f"Warning: ASR {out_finalasr} is <unk>, ignore")
                     return
                 if args.trans == 'fairseq':
-                    trans_text = translate(en_translator, src_text)
+                    trans_text = translate(source_translator, src_text)
                 else:
                     messages = []
                     if previous_out_asr is not None and os.path.exists(previous_out_asr):
@@ -323,7 +329,7 @@ def loop(ignoreFiles):
                 translate_to_cn2(out_trans_cn, out_trans_en, previous_out_trans_en, previous_out_trans_cn)
             # Move the input sourc file to OUTPUT.
             out_infile = os.path.join(OUTPUT, f"{in_basename}.ts")
-            move_ts_to_output(in_filepath, out_infile)
+            operate_ts_to_output(in_filepath, out_infile)
             in_filepath = out_infile
             print(f"Finished {in_filepath} to {out_infile}, {mem_info()}, {cost(starttime)}")
         finally:
