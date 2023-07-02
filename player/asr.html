@@ -213,24 +213,35 @@
                 const video = document.getElementById('video_player');
                 tsPlayer = mpegts.createPlayer({type: 'mpegts', url: url, isLive: true, enableStashBuffer: false});
                 tsPlayer.attachMediaElement(video);
-                $('#video_player').on('timeupdate', (e) => {
-                    let end = null;
+                $('#video_player').on('timeupdate', async (e) => {
+                    let end = null, current = null;
                     try {
                         end = tsPlayer && tsPlayer.buffered && tsPlayer.buffered.end(0);
+                        current = video && video.currentTime;
                     } catch (e) {
                         return;
                     }
+                    if (!end || !current || end - current > 0.3) {
+                        return;
+                    }
 
-                    try {
-                        const next = index < db.data.length - 1 ? db.data[index + 1] : null;
-                        const nextTR = next ? $(`#tr-${index + 1}`) : null;
+                    const doHandleEOF = () => {
+                        try {
+                            const next = index < db.data.length - 1 ? db.data[index + 1] : null;
+                            const nextTR = next ? $(`#tr-${index + 1}`) : null;
+                            if (!next || !nextTR) return null;
 
-                        const current = video && video.currentTime;
-                        if (end && current && end - current <= 0.3 && nextTR) {
                             onSegmentEnd(video, tr, segment, index, current, end, next, nextTR);
+                            return next;
+                        } catch (e) {
+                            console.error(e);
                         }
-                    } catch (e) {
-                        console.error(e);
+                    };
+
+                    while (true) {
+                        if (doHandleEOF()) break;
+                        console.log('wait for next segment');
+                        await new Promise(resolve => setTimeout(resolve, 1200));
                     }
                 });
                 tsPlayer.load();
