@@ -14,7 +14,7 @@ parser.add_argument("--transsrc", type=str, default='asr', help="Text for transl
 parser.add_argument("--opsrc", type=str, default='mv', help="Operate the source ts file: mv, cp. Default: mv")
 parser.add_argument("--source", type=str, default='eng_Latn', help="Source language: eng_Latn, zho_Hans, kor_Hang, fra_Latn, spa_Latn, ita_Latn, deu_Latn, jpn_Jpan, pol_Latn. Default: eng_Latn")
 parser.add_argument("--target", type=str, default='zho_Hans', help="Target language: eng_Latn, zho_Hans, kor_Hang, fra_Latn, spa_Latn, ita_Latn, deu_Latn, jpn_Jpan, pol_Latn. Default: zho_Hans")
-parser.add_argument("--whisper", type=str, default='small', help="The whisper model: tiny, base, small, medium, large. Default: small")
+parser.add_argument("--whisper", type=str, default='small', help="The whisper model: tiny, base, small, medium, large; tiny.en, base.en, small.en, medium.en, large.en. Default: small")
 parser.add_argument("--fairseq", type=str, default='200-distilled-600M', help="The fairseq NLLB model: 200-distilled-600M, 200-1.3B, 200-distilled-1.3B, 200-3.3B. Default: 200-distilled-600M")
 
 args = parser.parse_args()
