@@ -247,6 +247,7 @@
                 tsPlayer.load();
                 tsPlayer.play();
 
+                segment.active = true;
                 tr.addClass('table-success');
                 scrollToSegment($('#div-segments'), tr);
             };
@@ -263,7 +264,7 @@
                 } else if (exists.rountrip === 1) {
                     tr.find('td').eq(2).text(filterContent(segment.en));
                     tr.find('td').eq(3).text(filterContent(segment.cn));
-                    scrollToSegment($('#div-segments'), tr);
+                    if (segment.active) scrollToSegment($('#div-segments'), tr);
                 }
             };
             const onSegmentEnd = (video, tr, segment, index, current, end, next, nextTR) => {
@@ -287,6 +288,7 @@
                 console.log(`Switch ${segment.name} to next segment: ${next.name}, time: ${current}, end: ${end}`);
                 tr.removeClass('table-success');
                 tr.removeClass('table-warning');
+                segment.active = false;
                 nextTR.click();
             };
 

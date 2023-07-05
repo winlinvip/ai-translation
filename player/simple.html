@@ -247,6 +247,7 @@
                 tsPlayer.load();
                 tsPlayer.play();
 
+                segment.active = true;
                 tr.addClass('table-success');
                 scrollToSegment($('#div-segments'), tr);
             };
@@ -256,6 +257,8 @@
             const onSegmentEnd = (video, tr, segment, index, current, end, next, nextTR) => {
                 console.log(`Switch ${segment.name} to next segment: ${next.name}, time: ${current}, end: ${end}`);
                 tr.removeClass('table-success');
+                tr.removeClass('table-warning');
+                segment.active = false;
                 nextTR.click();
             };
 
