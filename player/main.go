@@ -79,9 +79,9 @@ func main() {
 	http.HandleFunc("/api/segments", func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			q := r.URL.Query()
-			in := q.Get("in")
+			in := q.Get("input")
 			if in == "" || !isAlphaNumeric(in) {
-				return fmt.Errorf("invalid query: in %s", in)
+				return fmt.Errorf("invalid query: input %s", in)
 			}
 
 			fileInfos, err := listFilesSortedByCreationTime(path.Join(InputDirectory, in))
@@ -119,9 +119,9 @@ func main() {
 	http.HandleFunc("/api/ts", func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			q := r.URL.Query()
-			in, segment := q.Get("in"), q.Get("segment")
+			in, segment := q.Get("input"), q.Get("segment")
 			if in == "" || !isAlphaNumeric(in) {
-				return fmt.Errorf("invalid query: in %s", in)
+				return fmt.Errorf("invalid query: input %s", in)
 			}
 			if segment == "" {
 				return fmt.Errorf("invalid query: segment %s", segment)

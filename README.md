@@ -110,7 +110,7 @@ go run .
 
 Open in browser:
 
-[http://localhost:9000/simple.html?in=livestream](http://localhost:9000/simple.html?in=livestream)
+[http://localhost:9000/simple.html?input=livestream](http://localhost:9000/simple.html?input=livestream)
 
 Click the segment to play the HLS stream and view the translated text.
 

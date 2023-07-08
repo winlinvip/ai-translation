@@ -5,7 +5,7 @@ starttime = time.time()
 import os, re, subprocess, openai, argparse, psutil
 
 parser = argparse.ArgumentParser(description="Translation")
-parser.add_argument("--stream", type=str, required=True, help="Input stream name, for example, in/livestream")
+parser.add_argument("--input", type=str, required=True, help="Input stream name, for example, in/livestream")
 parser.add_argument("--output", type=str, required=True, help="Output stream name, for example, player/out/livestream")
 parser.add_argument("--proxy", type=str, required=False, help="OpenAI API proxy, for example, x.y.z")
 parser.add_argument("--key", type=str, required=False, help="OpenAI API key, for example, xxxyyyzzz")
@@ -19,7 +19,7 @@ parser.add_argument("--fairseq", type=str, default='200-distilled-600M', help="T
 
 args = parser.parse_args()
 
-INPUT=rf"{args.stream}-.*\.ts$"
+INPUT=rf"{args.input}-.*\.ts$"
 OUTPUT=f"{args.output}"
 # available models: 'tiny', 'base', 'small', 'medium', 'large'
 # or english-only models: 'tiny.en', 'base.en', 'small.en', 'medium.en'

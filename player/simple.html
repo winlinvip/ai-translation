@@ -146,7 +146,7 @@
         };
 
         const qu = new URL(window.location.href);
-        const qIn = qu.searchParams.get("in");
+        const qIn = qu.searchParams.get("input");
         if (!qIn) throw new Error("in is required");
 
         $(function(){
@@ -160,7 +160,7 @@
             const updateSegments = async () => {
                 const data = await new Promise((resolve, reject) => {
                     $.ajax({
-                        url: `/api/segments?in=${qIn}`,
+                        url: `/api/segments?input=${qIn}`,
                         dataType: "json",
                         success: function(data) {
                             resolve(data);
@@ -209,7 +209,7 @@
                     tsPlayer = null;
                 }
 
-                const url = `/api/ts?in=${qIn}&segment=${segment.name}`;
+                const url = `/api/ts?input=${qIn}&segment=${segment.name}`;
                 const video = document.getElementById('video_player');
                 tsPlayer = mpegts.createPlayer({type: 'mpegts', url: url, isLive: true, enableStashBuffer: false});
                 tsPlayer.attachMediaElement(video);
