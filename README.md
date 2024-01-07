@@ -1,6 +1,6 @@
 # ai-translation
 
-[![](https://badgen.net/discord/members/yZ4BnPmHAd)](https://discord.gg/yZ4BnPmHAd)
+This solution is not good enough, we're researching a better version: https://github.com/winlinvip/vod-translator so we archive this repository.
 
 AI translation for English study based on FFmpeg, Whisper, Fairseq, OBS, SRS, and GPT.
 
