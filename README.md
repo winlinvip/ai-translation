@@ -1,6 +1,6 @@
 # ai-translation
 
-This solution is not good enough, we're researching a better version: https://github.com/winlinvip/vod-translator so we archive this repository.
+!!! Warning: We have integrated this project to [Oryx(SRS Stack)](https://github.com/ossrs/oryx), see [Revolutionize Video Content with Oryx: Effortless Dubbing and Translating to Multiple Languages Using OpenAI](https://blog.ossrs.io/expand-your-global-reach-with-srs-stack-effortless-video-translation-and-dubbing-solutions-544e1db671c2), to make it more easy to use.
 
 AI translation for English study based on FFmpeg, Whisper, Fairseq, OBS, SRS, and GPT.
 
